@@ -1,0 +1,413 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <title>Loan Approval Simulator</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1"/>
+
+    <style>
+        /* ---------- Theme variables ---------- */
+        :root{
+            --bg:#0b1020; --card:#141b34; --text:#e6e8ef; --muted:#9aa2c1;
+            --border:#2a3563; --input-bg:#0f1530; --nav-bg:rgba(11,16,32,.8);
+            --primary:#4f7cff;
+            --grid:rgba(42,53,99,.35); --chart-balance:#7aa2ff;
+            --chart-balance-fill:rgba(122,162,255,.25); --chart-interest:#f59e0b;
+            --chart-payment:#94a3b8;
+        }
+        [data-theme="light"]{
+            --bg:#f6f7fb; --card:#fff; --text:#0b1020; --muted:#4b5563;
+            --border:#d1d5db; --input-bg:#fff; --nav-bg:rgba(255,255,255,.8);
+            --primary:#3b82f6;
+            --grid:rgba(0,0,0,.08); --chart-balance:#3b82f6;
+            --chart-balance-fill:rgba(59,130,246,.2); --chart-interest:#eab308;
+            --chart-payment:#6b7280;
+        }
+
+        /* ---------- Base layout ---------- */
+        *{box-sizing:border-box}
+        html{scroll-behavior:smooth}
+        body{font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--text);line-height:1.4;margin:0}
+
+        .nav{position:sticky;top:0;z-index:50;background:var(--nav-bg);backdrop-filter:blur(6px);border-bottom:1px solid var(--border)}
+        .nav-inner{max-width:960px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;padding:10px 16px}
+        .brand{font-weight:800;letter-spacing:.3px}
+        .links a{color:var(--text);text-decoration:none;padding:8px 10px;border-radius:8px}
+        .links a:hover{background:color-mix(in oklab,var(--border) 20%,transparent)}
+        .links a[aria-current="page"]{background:color-mix(in oklab,var(--border) 35%,transparent)}
+        .theme-btn{border:1px solid var(--border);background:var(--card);color:var(--text);height:34px;padding:0 10px;border-radius:10px;cursor:pointer;margin-left:10px}
+
+        .container{max-width:960px;margin:32px auto;padding:24px;background:var(--card);border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.15)}
+        h1{margin-top:0}
+        .muted{color:var(--muted)}
+
+        .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px}
+        .grid>div{min-width:0}
+        label{display:block;font-size:14px;margin-bottom:6px;color:var(--muted)}
+        input,select{width:100%;padding:10px 12px;height:44px;border-radius:10px;border:1px solid var(--border);background:var(--input-bg);color:var(--text)}
+        select{padding-right:32px}
+
+        button{margin-top:12px;padding:12px 16px;border:0;border-radius:12px;background:var(--primary);color:#fff;font-weight:600;cursor:pointer;transition:transform .08s ease}
+        button:hover{transform:translateY(-1px)}
+        button:disabled{opacity:.6;cursor:not-allowed}
+        .ghost-btn{background:none;color:var(--text);border:1px solid var(--border)}
+        .ghost-btn:hover{transform:none;background:color-mix(in oklab,var(--border) 25%,transparent)}
+
+        input:focus,select:focus,button:focus-visible{outline:2px solid var(--primary);outline-offset:2px;box-shadow:0 0 0 4px color-mix(in oklab,var(--primary) 25%,transparent);border-color:var(--primary)}
+
+        .card{margin-top:20px;background:var(--input-bg);border:1px solid var(--border);border-radius:12px;padding:16px;overflow:hidden}
+        .badge{display:inline-block;padding:6px 10px;border-radius:999px;font-size:12px;font-weight:700}
+        .approved{background:#1e9e67;color:#fff}.denied{background:#ce2b4f;color:#fff}
+
+        @media (max-width:520px){.container{margin:16px;padding:16px}h1{font-size:1.6rem}}
+    </style>
+</head>
+<body>
+
+<nav class="nav" role="navigation" aria-label="Primary">
+    <div class="nav-inner">
+        <div class="brand">LoanSim</div>
+        <div style="display:flex;align-items:center;gap:8px">
+            <div class="links">
+                <a href="#apply" aria-current="page">Apply</a>
+                <a href="#history">History</a>
+                <a href="#about">About</a>
+            </div>
+            <button id="themeToggle" class="theme-btn" type="button" aria-label="Toggle theme">🌙 Dark</button>
+        </div>
+    </div>
+</nav>
+
+<div class="container" id="apply">
+    <h1>Loan Approval Simulator</h1>
+    <p class="muted">Enter details to see a simulated decision.</p>
+
+    <form id="appForm">
+        <div class="grid">
+            <div><label for="firstName">First name</label><input id="firstName" name="firstName" required/></div>
+            <div><label for="lastName">Last name</label><input id="lastName" name="lastName" required/></div>
+            <div><label for="email">Email</label><input id="email" type="email" name="email" required/></div>
+            <div>
+                <label for="employmentStatus">Employment status</label>
+                <select id="employmentStatus" name="employmentStatus" required>
+                    <option value="EMPLOYED">Employed</option>
+                    <option value="SELF_EMPLOYED">Self-employed</option>
+                    <option value="STUDENT">Student</option>
+                    <option value="UNEMPLOYED">Unemployed</option>
+                </select>
+            </div>
+            <div><label for="annualIncome">Annual income ($)</label><input id="annualIncome" type="number" name="annualIncome" min="0" step="0.01" required/></div>
+            <div><label for="monthlyDebt">Monthly debt ($)</label><input id="monthlyDebt" type="number" name="monthlyDebt" min="0" step="0.01" required/></div>
+            <div><label for="creditScore">Credit score (300–850)</label><input id="creditScore" type="number" name="creditScore" min="300" max="850" required/></div>
+            <div><label for="loanAmount">Loan amount ($)</label><input id="loanAmount" type="number" name="loanAmount" min="1" step="0.01" required/></div>
+            <div>
+                <label for="loanTermMonths">Loan term (months)</label>
+                <select id="loanTermMonths" name="loanTermMonths" required>
+                    <option>24</option><option>36</option><option>48</option>
+                    <option>60</option><option>72</option><option>84</option>
+                </select>
+            </div>
+        </div>
+        <button id="submitBtn" type="submit">Simulate decision</button>
+    </form>
+
+    <div id="result" class="card" style="display:none"></div>
+</div>
+
+<section id="history" class="container">
+    <h2 style="margin-top:0">History</h2>
+    <p class="muted">History is filtered by the email you submit above.</p>
+    <button id="loadHistoryBtn" type="button">Load history for this email</button>
+    <div id="historyCard" class="card" style="margin-top:12px">
+        <div id="historyBody" class="muted">No results yet.</div>
+    </div>
+</section>
+
+<section id="about" class="container">
+    <h2 style="margin-top:0">About</h2>
+    <p class="muted">This is a demo loan approval simulator using a simple rules + scorecard model. It is not real underwriting.</p>
+</section>
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+
+<script>
+    const form = document.getElementById('appForm');
+    const resultDiv = document.getElementById('result');
+    const submitBtn = document.getElementById('submitBtn');
+    const themeBtn = document.getElementById('themeToggle');
+
+    /* ------------ Theme ------------ */
+    const THEME_KEY = 'loansim_theme';
+    const prefersDark = matchMedia('(prefers-color-scheme: dark)').matches;
+    const initialTheme = localStorage.getItem(THEME_KEY) || (prefersDark ? 'dark' : 'light');
+    document.documentElement.setAttribute('data-theme', initialTheme);
+    updateThemeButton(initialTheme);
+
+    themeBtn.addEventListener('click', () => {
+        const curr = document.documentElement.getAttribute('data-theme') || 'dark';
+        const next = curr === 'dark' ? 'light' : 'dark';
+        setTheme(next);
+    });
+
+    function setTheme(theme){
+        document.documentElement.setAttribute('data-theme', theme);
+        localStorage.setItem(THEME_KEY, theme);
+        updateThemeButton(theme);
+        applyChartDefaults();
+        if(lastSchedule) renderAmortChart(lastSchedule); // re-theme chart
+    }
+    function updateThemeButton(theme){
+        themeBtn.textContent = theme === 'dark' ? '🌙 Dark' : '☀️ Light';
+    }
+    function cssVar(name){ return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+    function getChartPalette(){
+        return {
+            text: cssVar('--text'), subtle: cssVar('--muted'), grid: cssVar('--grid'),
+            border: cssVar('--border'), bg: cssVar('--input-bg'),
+            balance: cssVar('--chart-balance'), balanceFill: cssVar('--chart-balance-fill'),
+            interest: cssVar('--chart-interest'), payment: cssVar('--chart-payment')
+        };
+    }
+    function applyChartDefaults(){
+        if(!window.Chart) return;
+        const c = getChartPalette();
+        Chart.defaults.color = c.subtle;
+        Chart.defaults.borderColor = c.border;
+        Chart.defaults.font.family = 'system-ui, -apple-system, Segoe UI, Roboto, sans-serif';
+        Chart.defaults.plugins.legend.labels.color = c.subtle;
+        Chart.defaults.plugins.tooltip.backgroundColor = c.bg;
+        Chart.defaults.plugins.tooltip.borderColor = c.border;
+        Chart.defaults.plugins.tooltip.borderWidth = 1;
+        Chart.defaults.plugins.tooltip.titleColor = c.text;
+        Chart.defaults.plugins.tooltip.bodyColor  = c.text;
+    }
+    applyChartDefaults();
+
+    /* ------------ Finance helpers ------------ */
+    function calcPayment(aprDecimal, principal, months){
+        if(aprDecimal == null || principal == null || months <= 0) return null;
+        const r = Number(aprDecimal) / 12;
+        if(r === 0) return principal / months;
+        return (principal * r) / (1 - Math.pow(1 + r, -months));
+    }
+    const fmtMoney = n => '$' + Number(n).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
+
+    // Build arrays AND detailed rows for CSV.
+    function buildAmortization(aprDecimal, principal, months){
+        const r = Number(aprDecimal) / 12;
+        const pmt = calcPayment(aprDecimal, principal, months);
+
+        let bal = principal;
+        const balances=[], interests=[], payments=[], principals=[];
+        const labels = Array.from({length: months}, (_,i)=>i+1);
+        const rows = [];
+
+        for(let m=1; m<=months; m++){
+            const interest = r === 0 ? 0 : bal * r;
+            const principalPaid = Math.min(pmt - interest, bal);
+            bal = Math.max(0, bal - principalPaid);
+
+            balances.push(Number(bal.toFixed(2)));
+            interests.push(Number(interest.toFixed(2)));
+            payments.push(Number(pmt.toFixed(2)));
+            principals.push(Number(principalPaid.toFixed(2)));
+
+            rows.push({
+                month: m,
+                payment: Number(pmt.toFixed(2)),
+                principal: Number(principalPaid.toFixed(2)),
+                interest: Number(interest.toFixed(2)),
+                balance: Number(bal.toFixed(2))
+            });
+        }
+        return { labels, balances, interests, payments, principals, rows, payment: pmt };
+    }
+
+    /* ------------ Chart ------------ */
+    let loanSimChart = null;
+    let lastSchedule = null;       // for re-theme
+    let lastRowsForCsv = null;     // for CSV download
+
+    function renderAmortChart(schedule){
+        lastSchedule = schedule;
+        const canvas = document.getElementById('amChart');
+        if(!canvas || !window.Chart) return;
+        const ctx = canvas.getContext('2d');
+
+        if(loanSimChart && typeof loanSimChart.destroy === 'function') loanSimChart.destroy();
+
+        const c = getChartPalette();
+        const grad = ctx.createLinearGradient(0,0,0,canvas.height);
+        grad.addColorStop(0, c.balanceFill); grad.addColorStop(1,'rgba(0,0,0,0)');
+
+        loanSimChart = new Chart(ctx,{
+            type:'line',
+            data:{
+                labels:schedule.labels,
+                datasets:[
+                    {label:'Balance', data:schedule.balances, borderColor:c.balance, backgroundColor:grad, fill:true, tension:.25, borderWidth:2, pointRadius:0},
+                    {label:'Interest (monthly)', data:schedule.interests, borderColor:c.interest, tension:.25, borderWidth:2, pointRadius:0},
+                    {label:'Payment', data:schedule.payments, borderColor:c.payment, borderDash:[6,6], tension:0, borderWidth:2, pointRadius:0}
+                ]
+            },
+            options:{
+                responsive:true, maintainAspectRatio:false, interaction:{mode:'index',intersect:false},
+                scales:{
+                    x:{title:{display:true,text:'Month',color:c.subtle},ticks:{color:c.subtle},grid:{color:c.grid,drawBorder:false}},
+                    y:{ticks:{color:c.subtle,callback:v=>'$'+Number(v).toLocaleString()},grid:{color:c.grid,drawBorder:false}}
+                },
+                plugins:{
+                    legend:{position:'bottom',labels:{color:c.subtle,usePointStyle:true}},
+                    tooltip:{callbacks:{label:(ctx)=>`${ctx.dataset.label}: $${Number(ctx.parsed.y).toLocaleString()}`}}
+                }
+            }
+        });
+    }
+
+    // Download helper
+    function downloadCSV(rows, filename='amortization.csv'){
+        if(!rows?.length) return;
+        const header = 'Month,Payment,Principal,Interest,Balance\n';
+        const lines = rows.map(r =>
+            [r.month, r.payment.toFixed(2), r.principal.toFixed(2), r.interest.toFixed(2), r.balance.toFixed(2)].join(',')
+        );
+        const blob = new Blob([header + lines.join('\n')], {type:'text/csv;charset=utf-8;'});
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = filename;
+        document.body.appendChild(a); a.click();
+        setTimeout(()=>{ URL.revokeObjectURL(url); a.remove(); }, 0);
+    }
+
+    /* ------------ History ------------ */
+    async function loadHistory(email){
+        const historyBody = document.getElementById('historyBody');
+        if(!email){ if(historyBody) historyBody.innerHTML='Enter an email above and submit the form first.'; return; }
+        const res = await fetch(`/api/applications?email=${encodeURIComponent(email)}`);
+        const items = await res.json();
+        if(!items.length){ if(historyBody) historyBody.innerHTML='No applications found for '+email; return; }
+
+        const rows = items.map(it=>{
+            const principal = Number(it.approvedAmount ?? it.loanAmount);
+            const payment = calcPayment(Number(it.apr), principal, Number(it.loanTermMonths));
+            const paymentStr = payment != null ? fmtMoney(payment) : '—';
+            let reasons=[]; try{ reasons = JSON.parse(it.reasonsJson||"[]"); }catch{}
+            const reasonsHtml = reasons.length ? `<details><summary>Why</summary><ul style="margin:8px 0 0 16px;">${reasons.map(r=>`<li>${r}</li>`).join('')}</ul></details>` : '—';
+            return `
+        <tr>
+          <td>${new Date(it.createdAt).toLocaleString()}</td>
+          <td>${it.status}</td>
+          <td>${it.riskScore ?? '—'}</td>
+          <td>${it.apr != null ? (Number(it.apr)*100).toFixed(2)+'%' : '—'}</td>
+          <td>$${Number(it.approvedAmount ?? 0).toLocaleString()}</td>
+          <td>$${Number(it.loanAmount ?? 0).toLocaleString()}</td>
+          <td>${it.loanTermMonths}</td>
+          <td>${it.employmentStatus}</td>
+          <td>${paymentStr}</td>
+          <td>${reasonsHtml}</td>
+        </tr>`;
+        }).join('');
+
+        if(historyBody){
+            historyBody.innerHTML = `
+        <div style="overflow:auto;">
+          <table style="width:100%; border-collapse:collapse;">
+            <thead>
+              <tr style="text-align:left;">
+                <th>Submitted</th><th>Status</th><th>Score</th><th>APR</th>
+                <th>Approved</th><th>Amount</th><th>Term</th><th>Employment</th>
+                <th>Payment</th><th>Reasons</th>
+              </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>`;
+        }
+    }
+    document.getElementById('loadHistoryBtn')?.addEventListener('click', ()=>{
+        const email = document.getElementById('email').value;
+        if(email) loadHistory(email);
+    });
+    document.addEventListener('DOMContentLoaded', ()=>{
+        const saved = localStorage.getItem('loansim_email');
+        if(saved){ document.getElementById('email').value = saved; loadHistory(saved); }
+    });
+
+    /* ------------ Submit ------------ */
+    form.addEventListener('submit', async (e)=>{
+        e.preventDefault();
+        submitBtn.disabled = true;
+
+        const payload = Object.fromEntries(new FormData(form).entries());
+        payload.annualIncome   = Number(payload.annualIncome);
+        payload.monthlyDebt    = Number(payload.monthlyDebt);
+        payload.creditScore    = Number(payload.creditScore);
+        payload.loanAmount     = Number(payload.loanAmount);
+        payload.loanTermMonths = Number(payload.loanTermMonths);
+
+        try{
+            const res = await fetch('/api/applications',{
+                method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)
+            });
+            if(!res.ok) throw new Error(`HTTP ${res.status}`);
+            const data = await res.json();
+
+            const badge = (data.status === 'APPROVED')
+                ? `<span class="badge approved">APPROVED</span>`
+                : `<span class="badge denied">DENIED</span>`;
+
+            const apr   = data.apr != null ? (Number(data.apr)*100).toFixed(2) + '%' : '—';
+            const amt   = data.approvedAmount != null ? '$' + Number(data.approvedAmount).toLocaleString() : '—';
+            const score = data.riskScore ?? '—';
+            const reasons = (data.reasons || []).map(r=>`<li>${r}</li>`).join('');
+
+            const principal  = Number(data.approvedAmount ?? payload.loanAmount);
+            const paymentNum = calcPayment(Number(data.apr), principal, Number(payload.loanTermMonths));
+            const paymentStr = paymentNum != null ? fmtMoney(paymentNum) : '—';
+
+            const canChart = data.apr != null && principal > 0 && Number(payload.loanTermMonths) > 0;
+            const chartBlock = canChart
+                ? `<div class="card" style="margin-top:12px;height:260px"><canvas id="amChart" aria-label="Amortization chart"></canvas></div>
+           <div style="display:flex;justify-content:flex-end;margin-top:8px">
+             <button id="dlCsvBtn" type="button" class="ghost-btn">Download schedule (CSV)</button>
+           </div>`
+                : '';
+
+            resultDiv.innerHTML = `
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:12px">
+          <h2 style="margin:0">Decision</h2>${badge}
+        </div>
+        <p class="muted">Risk Score: <strong>${score}</strong></p>
+        <p>APR: <strong>${apr}</strong> • Approved Amount: <strong>${amt}</strong></p>
+        <p>Monthly payment: <strong>${paymentStr}</strong></p>
+        <h3 style="margin-bottom:6px">Why?</h3>
+        <ul>${reasons}</ul>
+        ${chartBlock}
+      `;
+            resultDiv.style.display = 'block';
+            resultDiv.scrollIntoView({behavior:'smooth',block:'start'});
+
+            if(canChart){
+                const schedule = buildAmortization(Number(data.apr), principal, Number(payload.loanTermMonths));
+                lastRowsForCsv = schedule.rows;
+                renderAmortChart(schedule);
+                document.getElementById('dlCsvBtn')?.addEventListener('click', ()=>{
+                    downloadCSV(lastRowsForCsv, 'amortization.csv');
+                });
+            }
+
+            localStorage.setItem('loansim_email', payload.email);
+            loadHistory(payload.email);
+
+        }catch(err){
+            resultDiv.innerHTML = `<p class="muted">Something went wrong. ${err.message}</p>`;
+            resultDiv.style.display = 'block';
+        }finally{
+            submitBtn.disabled = false;
+        }
+    });
+</script>
+
+</body>
+</html>
