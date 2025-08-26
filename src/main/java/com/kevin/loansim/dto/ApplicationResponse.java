@@ -4,10 +4,10 @@ import java.math.BigDecimal;
 import java.util.List;
 
 public class ApplicationResponse {
-    private String status;              // APPROVED | DENIED
-    private Integer riskScore;          // 0-1000
-    private BigDecimal apr;             // null if denied
-    private BigDecimal approvedAmount;  // null if denied
+    private String status;              
+    private Integer riskScore;         
+    private BigDecimal apr;            
+    private BigDecimal approvedAmount; 
     private List<String> reasons;
 
     public ApplicationResponse() {}
