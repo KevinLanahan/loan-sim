@@ -24,7 +24,7 @@ public class LoanApplication {
     private Double loanAmount;
     private Integer loanTermMonths;
 
-    private String status;               // APPROVED | DENIED
+    private String status;               
     private Integer riskScore;
     private BigDecimal apr;
     private BigDecimal approvedAmount;
