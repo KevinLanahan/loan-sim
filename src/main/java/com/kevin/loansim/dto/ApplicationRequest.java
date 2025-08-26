@@ -14,7 +14,7 @@ public class ApplicationRequest {
     @NotNull @Positive private Double loanAmount;
     @NotNull @Min(6) @Max(84) private Integer loanTermMonths;
 
-    @NotBlank private String employmentStatus; // EMPLOYED, SELF_EMPLOYED, UNEMPLOYED, STUDENT
+    @NotBlank private String employmentStatus;
 
     public String getFirstName()
         { return firstName; }
