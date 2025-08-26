@@ -25,10 +25,8 @@ public class ApplicationService {
     }
 
     public ApplicationResponse submit(ApplicationRequest req) {
-        // 1) get decision from engine
         ApplicationResponse resp = decisionEngine.decide(req);
 
-        // 2) persist combined request + decision
         LoanApplication e = new LoanApplication();
         e.setFirstName(req.getFirstName());
         e.setLastName(req.getLastName());
